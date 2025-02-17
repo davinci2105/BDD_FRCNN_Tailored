@@ -1,7 +1,7 @@
 # BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss
 
 
-This project implements an object detection system using the Faster R-CNN architecture on the BDD100K dataset. The system is evaluated using mAP (mean Average Precision) and other detection metrics. The purpose of this report is to provide a detailed analysis of the model's performance, visualization techniques, and possible improvements.
+This project implements an object detection system using the Faster R-CNN architecture on the BDD100K dataset. The system is evaluated using mAP (mean Average Precision) and other detection metrics.
 
 ## Introduction
 
@@ -32,6 +32,8 @@ The dataset is divided into training, validation, and testing sets. Each set con
 
 We use Faster R-CNN, an object detection model that combines a Region Proposal Network (RPN) with Fast R-CNN for end-to-end object detection. The model is trained using the training set, and its performance is evaluated using the validation and test sets.
 
+Please find the detailed model report in https://github.com/davinci2105/BDD_FRCNN_Tailored/blob/main/Development_pipeline.md
+
 ### Model Architecture
 
 The Faster R-CNN model is built using the following steps:
@@ -51,7 +53,7 @@ The model is trained for 15 epochs using a learning rate of 0.0001 and a batch s
 
 The model’s performance was evaluated at each epoch. The training loss and validation loss were recorded, and the model was evaluated using mAP at multiple IoU thresholds. The following results were obtained:
 
-![Training and Validation Loss Curve](training_loss_curve.png)
+![Training and Validation Loss Curve](training_loss_curve.png) To Be uploaded
 
 ### Evaluation Metrics
 
@@ -65,19 +67,13 @@ The evaluation metrics computed for different IoU thresholds are as follows:
 
 ## Challenges and Limitations
 
-Despite the promising results, there are several challenges and limitations:
-
-- **Class Imbalance:** Some object classes are underrepresented, which may have impacted the model's performance.
-- **False Positives/Negatives:** The model sometimes misidentifies objects or misses smaller objects.
-- **Bounding Box Precision:** There is room for improvement in the precision of bounding boxes, especially in crowded scenes.
+TBA
 
 ## Future Work
 
 To improve the model’s performance, we recommend the following:
 
-- **Data Augmentation:** Apply data augmentation techniques such as random scaling, cropping, and rotation to improve model robustness.
-- **Fine-Tuning:** Fine-tune the model on a smaller set of images for better convergence.
-- **Improved Evaluation Metrics:** Use additional metrics such as F1-score and Intersection over Intersection (IOI).
+TBA
 
 ## Additional Resources
 
@@ -89,5 +85,5 @@ The following resources are available for further exploration:
 
 ## Conclusion
 
-This project demonstrates the effectiveness of Faster R-CNN for object detection on the BDD100K dataset. The model achieved satisfactory results but has room for improvement. The findings highlight areas for further research and development, including addressing class imbalance and improving detection accuracy.
+This project uses Faster R-CNN with Unet and low light enhancement layers with hybrid loss for object detection on the BDD100K dataset. 
 
