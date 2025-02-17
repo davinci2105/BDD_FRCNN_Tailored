@@ -23,7 +23,7 @@ bdd_dataset/
 ├── labels/
 │   ├── bdd100k_labels_images_train.json
 │   ├── bdd100k_labels_images_val.json
-│   └── bdd100k_labels_images_test.json
+│   └── bdd100k_labels_images_test.json '''
 
 
 The dataset is divided into training, validation, and testing sets. Each set contains images and corresponding annotations in the form of JSON files.
