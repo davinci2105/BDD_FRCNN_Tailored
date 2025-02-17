@@ -1,0 +1,53 @@
+# Byte-compiled / cached files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+
+# Virtual environment
+venv/
+env/
+*.egg-info/
+
+# Dataset and large files
+bdd_dataset/
+dumps/
+evaluation_results/
+runs/
+analysis_report/
+detectron2/
+*.tar
+analysis-container.tar
+# Logs and checkpoints
+logs/
+*.log
+*.csv
+*.json
+*.out
+
+# Model weights and checkpoints
+*.pth
+*.pt
+checkpoints/
+faster_rcnn_best.pth
+
+# Docker-related
+*.dockerfile
+Dockerfile
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.iml
+
+# TensorBoard logs
+logs/
+events.out.tfevents.*
+
+# System-specific
+.DS_Store
+Thumbs.db

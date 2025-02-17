@@ -1,0 +1,22 @@
+# Use a minimal Python base image
+FROM python:3.9-slim
+
+# Set the working directory inside the container
+WORKDIR /workspace
+
+# Install system dependencies for OpenCV
+RUN apt update && apt install -y \
+    python3-pip \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install dependencies
+COPY analysis_requirements.txt .
+RUN pip install --no-cache-dir -r analysis_requirements.txt
+
+# Copy analysis script into container
+COPY analysis.py .
+
+# Set default command to run analysis.py
+CMD ["python", "analysis.py"]
