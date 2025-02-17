@@ -1,4 +1,5 @@
-# BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss
+# <p align="center">BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss</p>
+BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss
 
 
 This project implements an object detection system using the Faster R-CNN architecture on the BDD100K dataset. The system is evaluated using mAP (mean Average Precision) and other detection metrics.
@@ -14,6 +15,7 @@ The objective of this project is to train a Faster R-CNN model on the BDD100K da
 The dataset consists of images collected from a variety of driving scenarios, with annotations for different object classes such as cars, trucks, pedestrians, traffic signs, and more. The annotations are stored in JSON format, which includes bounding box coordinates, object class labels, and other metadata.
 
 ### Dataset Structure
+
 ```plaintext
 bdd_dataset/
 ├── 100k/
@@ -22,13 +24,11 @@ bdd_dataset/
 │   └── test/
 ├── labels/
 │   ├── bdd100k_labels_images_train.json
-│   ├── bdd100k_labels_images_val.json
-│   └── bdd100k_labels_images_test.json 
-
-
+│   ├── bdd100k_labels_images_val.json 
+```
 The dataset is divided into training, validation, and testing sets. Each set contains images and corresponding annotations in the form of JSON files.
 
-## Methodology
+### Methodology
 
 We use Faster R-CNN, an object detection model that combines a Region Proposal Network (RPN) with Fast R-CNN for end-to-end object detection. The model is trained using the training set, and its performance is evaluated using the validation and test sets.
 
