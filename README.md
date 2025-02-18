@@ -81,7 +81,7 @@ The following resources are available for further exploration:
 
 - **Analysis Report:** You can access the detailed analysis report of the project at the following link: [Analysis Report on Google Drive](https://drive.google.com/drive/folders/1DX3BQFpL6CaSEwz1uNX6BINg4WKnc7Ql?usp=sharing).
 - **Data Analysis Container:** A pre-configured container for data analysis is available for download here: [Data Analysis Container on Google Drive](https://drive.google.com/file/d/1lac_4T1H480A2VuVBtLt2cSXsIotOFHp/view?usp=sharing).
-- **Pre-trained Model:** The pre-trained model used in this project is available for download here: [Pre-trained Model on Google Drive](https://drive.google.com/file/d/1NZR54DFGz2_NOhlrtmQqDGzYpYBzVvi1/view?usp=sharing).
+- **Trained Model:** The Trained model of this project is available for download here: [Pre-trained Model on Google Drive](https://drive.google.com/file/d/1NZR54DFGz2_NOhlrtmQqDGzYpYBzVvi1/view?usp=sharing).
 
 ## Conclusion
 
