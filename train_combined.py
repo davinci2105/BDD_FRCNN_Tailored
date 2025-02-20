@@ -14,7 +14,7 @@ HYPERPARAMS = {
     "learning_rate": 0.0001,
     "epochs": 25,
     "patience": 5,
-    "checkpoint_path": "checkpoints/faster_rcnn_best.pth",
+    "checkpoint_dir": "checkpoints",  # Changed from checkpoint_path to checkpoint_dir
     "tensorboard_log_dir": "logs",
     "use_regularization": False,
     "weight_decay": 5e-5,
@@ -53,8 +53,8 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=HYPERPARAMS["step_siz
 criterion = HybridLoss()
 writer = SummaryWriter(HYPERPARAMS["tensorboard_log_dir"])
 
-# Load Checkpoint if exists
-best_val_loss, start_epoch = load_checkpoint(model, optimizer, HYPERPARAMS["checkpoint_path"])
+# Load checkpoint if exists (latest checkpoint in the directory)
+best_val_loss, start_epoch = load_checkpoint(model, optimizer, HYPERPARAMS["checkpoint_dir"])
 print(f"📌 Resuming training from epoch {start_epoch}...")
 
 # ================== DATALOADERS ==================
@@ -178,8 +178,10 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
         print(f"IoU {iou}: mAP={metric_values['mAP']:.3f}, AR={metric_values['AR']:.3f}")
 
     # ================== CHECKPOINT & EARLY STOPPING ==================
+    # Save checkpoint at every epoch using the new checkpoint logic.
+    save_checkpoint(model, optimizer, avg_val_loss, epoch, HYPERPARAMS["checkpoint_dir"])
+    # For early stopping, update patience based on validation loss improvement.
     if avg_val_loss < best_val_loss:
-        save_checkpoint(model, optimizer, avg_val_loss, epoch, HYPERPARAMS["checkpoint_path"])
         best_val_loss = avg_val_loss
         patience_counter = 0
     else:
