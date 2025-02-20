@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 import json
 import os
 import cv2
@@ -32,7 +32,7 @@ class BDDDataset(Dataset):
             if valid_objs:
                 self.filtered_annotations.append((ann['name'], valid_objs))
 
-        # Initialize glare & flare removal and low-light enhancement
+        # Initialize preprocessing models if required
         if self.preprocess:
             self.unet = UNet().eval()
             self.low_light_enhancer = LowLightEnhancement().eval()
@@ -47,13 +47,12 @@ class BDDDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         height, width, _ = image.shape  
 
-        # Convert bounding boxes to required format || Normalize by width & height
+        # Convert bounding boxes to required format and normalize by width & height
         bboxes = []
         labels = []
         for obj in objs:
             x1, y1, x2, y2 = obj['box2d']['x1'], obj['box2d']['y1'], obj['box2d']['x2'], obj['box2d']['y2']
             label = CLASS_TO_IDX[obj['category']]
-            
             # Normalize bounding box coordinates
             x1 /= width
             x2 /= width
@@ -74,7 +73,7 @@ class BDDDataset(Dataset):
                 image_tensor = self.unet(image_tensor)
                 image_tensor = self.low_light_enhancer(image_tensor)
 
-        # Convert back to numpy
+        # Convert back to numpy image
         image = image_tensor.squeeze(0).permute(1, 2, 0).numpy()
         image = (image * 255).astype(np.uint8)
 
@@ -104,7 +103,11 @@ val_transform = A.Compose([
     ToTensorV2()
 ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], min_visibility=0.2))
 
-def get_dataloader(label_file, image_dir, batch_size=8, shuffle=True, is_train=True):
+def get_dataloader(label_file, image_dir, batch_size=8, shuffle=True, is_train=True, max_samples=None):
     transform = train_transform if is_train else val_transform
     dataset = BDDDataset(label_file, image_dir, transform=transform)
+    # Apply quick mode if max_samples is provided
+    if max_samples is not None:
+        indices = list(range(min(len(dataset), max_samples)))
+        dataset = Subset(dataset, indices)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=lambda x: tuple(zip(*x)))

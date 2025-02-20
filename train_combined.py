@@ -19,7 +19,7 @@ HYPERPARAMS = {
     "use_regularization": True, 
     "weight_decay": 5e-5, 
     "iou_thresholds": [0.5, 0.75, 0.95],  
-    "train_mode": "full",  # "quick" -> Few images, "full" -> Complete dataset
+    "train_mode": "quick",  # "quick" -> Few images, "full" -> Complete dataset
     "max_train_samples": 10, 
     "max_val_samples": 10,  
 }
@@ -49,15 +49,35 @@ writer = SummaryWriter(HYPERPARAMS["tensorboard_log_dir"])
 
 # Load Checkpoint if exists
 best_val_loss, start_epoch = load_checkpoint(model, optimizer, HYPERPARAMS["checkpoint_path"])
-
 print(f"📌 Resuming training from epoch {start_epoch}...")
 
 # ================== DATALOADERS ==================
-train_loader = get_dataloader(TRAIN_LABELS, TRAIN_IMAGES, batch_size=HYPERPARAMS["batch_size"], is_train=True)
-val_loader = get_dataloader(VAL_LABELS, VAL_IMAGES, batch_size=HYPERPARAMS["batch_size"], is_train=False)
+if HYPERPARAMS["train_mode"] == "quick":
+    train_loader = get_dataloader(
+        TRAIN_LABELS, TRAIN_IMAGES, 
+        batch_size=HYPERPARAMS["batch_size"], 
+        shuffle=True, 
+        is_train=True, 
+        max_samples=HYPERPARAMS["max_train_samples"]
+    )
+    val_loader = get_dataloader(
+        VAL_LABELS, VAL_IMAGES, 
+        batch_size=HYPERPARAMS["batch_size"], 
+        shuffle=False, 
+        is_train=False, 
+        max_samples=HYPERPARAMS["max_val_samples"]
+    )
+    print(f"Quick mode active: Using {len(train_loader.dataset)} training samples and {len(val_loader.dataset)} validation samples.")
+else:
+    train_loader = get_dataloader(TRAIN_LABELS, TRAIN_IMAGES, batch_size=HYPERPARAMS["batch_size"], shuffle=True, is_train=True)
+    val_loader = get_dataloader(VAL_LABELS, VAL_IMAGES, batch_size=HYPERPARAMS["batch_size"], shuffle=False, is_train=False)
 
 train_losses, val_losses = [], []
 patience_counter = 0
+
+# For accumulating per-image predictions (for metrics) during validation.
+all_per_image_preds = []
+all_per_image_targets = []
 
 # ================== TRAINING LOOP ==================
 for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
@@ -68,26 +88,31 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     print(f"🔹 Training Mode: {HYPERPARAMS['train_mode']}")
 
     for batch_idx, (images, targets) in enumerate(tqdm.tqdm(train_loader, desc=f"Epoch {epoch+1}/{HYPERPARAMS['epochs']} Training")):
-        images = torch.stack(images).to(device).float() / 255.0  # Normalize
+        images = torch.stack(images).to(device).float() / 255.0  # Normalize (model.forward expects [0,255])
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         optimizer.zero_grad()
         predictions_list = model(images)
 
-        pred_logits, pred_boxes, target_labels, target_boxes = visualize_predictions(predictions_list, targets, device, CLASS_TO_IDX)
+        # Updated visualization call with score threshold filtering.
+        concat_preds, per_image_preds, per_image_targets = visualize_predictions(
+            predictions_list, targets, device, CLASS_TO_IDX, score_threshold=0.05)
+        pred_logits, pred_boxes, target_labels, target_boxes = concat_preds
 
+        # Optionally, clip tensors to the same length (if required by your loss function).
         min_size = min(pred_logits.shape[0], target_labels.shape[0], pred_boxes.shape[0], target_boxes.shape[0])
         if min_size > 0:
-            pred_logits, target_labels, pred_boxes, target_boxes = pred_logits[:min_size], target_labels[:min_size], pred_boxes[:min_size], target_boxes[:min_size]
+            pred_logits = pred_logits[:min_size]
+            target_labels = target_labels[:min_size]
+            pred_boxes = pred_boxes[:min_size]
+            target_boxes = target_boxes[:min_size]
 
             # Compute loss
             loss = criterion(pred_logits, target_labels, pred_boxes, target_boxes)
             
-            # Ensure loss requires grad
             if not loss.requires_grad:
                 loss = loss.clone().detach().requires_grad_(True)
             
-            # Backpropagation
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -102,7 +127,9 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     model.eval()
     val_loss = 0.0
     val_samples_count = 0
-    all_predictions, all_targets = [], []
+    # Reset per-image lists for current validation epoch.
+    all_per_image_preds = []
+    all_per_image_targets = []
 
     with torch.no_grad():
         for i, (images, targets) in enumerate(val_loader):
@@ -111,17 +138,23 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     
             predictions_list = model(images)
     
-            pred_logits, pred_boxes, target_labels, target_boxes = visualize_predictions(predictions_list, targets, device, CLASS_TO_IDX)
+            concat_preds, per_image_preds, per_image_targets = visualize_predictions(
+                predictions_list, targets, device, CLASS_TO_IDX, score_threshold=0.05)
+            pred_logits, pred_boxes, target_labels, target_boxes = concat_preds
     
-            if len(pred_boxes) == 0:
+            if pred_boxes.shape[0] == 0:
                 print(f" No predictions for batch {i}")
     
-            all_predictions.append({"boxes": pred_boxes, "scores": pred_logits, "labels": target_labels})
-            all_targets.append({"boxes": target_boxes, "labels": target_labels})
+            # Accumulate per-image predictions for metric computation.
+            all_per_image_preds.extend(per_image_preds)
+            all_per_image_targets.extend(per_image_targets)
     
             min_size = min(pred_logits.shape[0], target_labels.shape[0], pred_boxes.shape[0], target_boxes.shape[0])
             if min_size > 0:
-                pred_logits, target_labels, pred_boxes, target_boxes = pred_logits[:min_size], target_labels[:min_size], pred_boxes[:min_size], target_boxes[:min_size]
+                pred_logits = pred_logits[:min_size]
+                target_labels = target_labels[:min_size]
+                pred_boxes = pred_boxes[:min_size]
+                target_boxes = target_boxes[:min_size]
                 loss = criterion(pred_logits, target_labels, pred_boxes, target_boxes)
                 
                 if not loss.requires_grad:
@@ -133,8 +166,9 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     val_losses.append(avg_val_loss)
     print(f"Epoch {epoch+1}: Validation Loss = {avg_val_loss:.4f}")
 
-    # Compute & Print Evaluation Metrics
-    metrics = compute_evaluation_metrics(all_predictions, all_targets, iou_thresholds=HYPERPARAMS["iou_thresholds"])
+    # Compute & Print Evaluation Metrics using per-image dictionaries.
+    # Flatten the lists (if necessary) and then compute metrics.
+    metrics = compute_evaluation_metrics(all_per_image_preds, all_per_image_targets, iou_thresholds=HYPERPARAMS["iou_thresholds"])
     for iou, metric_values in metrics.items():
         print(f"IoU {iou}: mAP={metric_values['mAP']:.3f}, AR={metric_values['AR']:.3f}")
 
