@@ -1,7 +1,8 @@
-# BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss
+# <p align="center">BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss</p>
+BDD-ObjectDetection: Object Detection using Faster R-CNN on BDD100K Dataset and Hybrid Weighted Loss
 
 
-This project implements an object detection system using the Faster R-CNN architecture on the BDD100K dataset. The system is evaluated using mAP (mean Average Precision) and other detection metrics. The purpose of this report is to provide a detailed analysis of the model's performance, visualization techniques, and possible improvements.
+This project implements an object detection system using the Faster R-CNN architecture on the BDD100K dataset. The system is evaluated using mAP (mean Average Precision) and other detection metrics.
 
 ## Introduction
 
@@ -14,6 +15,7 @@ The objective of this project is to train a Faster R-CNN model on the BDD100K da
 The dataset consists of images collected from a variety of driving scenarios, with annotations for different object classes such as cars, trucks, pedestrians, traffic signs, and more. The annotations are stored in JSON format, which includes bounding box coordinates, object class labels, and other metadata.
 
 ### Dataset Structure
+
 ```plaintext
 bdd_dataset/
 ├── 100k/
@@ -22,15 +24,15 @@ bdd_dataset/
 │   └── test/
 ├── labels/
 │   ├── bdd100k_labels_images_train.json
-│   ├── bdd100k_labels_images_val.json
-│   └── bdd100k_labels_images_test.json
-
-
+│   ├── bdd100k_labels_images_val.json 
+```
 The dataset is divided into training, validation, and testing sets. Each set contains images and corresponding annotations in the form of JSON files.
 
-## Methodology
+### Methodology
 
 We use Faster R-CNN, an object detection model that combines a Region Proposal Network (RPN) with Fast R-CNN for end-to-end object detection. The model is trained using the training set, and its performance is evaluated using the validation and test sets.
+
+Please find the detailed model report in https://github.com/davinci2105/BDD_FRCNN_Tailored/blob/main/Development_pipeline.md
 
 ### Model Architecture
 
@@ -51,7 +53,7 @@ The model is trained for 15 epochs using a learning rate of 0.0001 and a batch s
 
 The model’s performance was evaluated at each epoch. The training loss and validation loss were recorded, and the model was evaluated using mAP at multiple IoU thresholds. The following results were obtained:
 
-![Training and Validation Loss Curve](training_loss_curve.png)
+![Training and Validation Loss Curve](training_loss_curve.png) To Be uploaded
 
 ### Evaluation Metrics
 
@@ -65,19 +67,13 @@ The evaluation metrics computed for different IoU thresholds are as follows:
 
 ## Challenges and Limitations
 
-Despite the promising results, there are several challenges and limitations:
-
-- **Class Imbalance:** Some object classes are underrepresented, which may have impacted the model's performance.
-- **False Positives/Negatives:** The model sometimes misidentifies objects or misses smaller objects.
-- **Bounding Box Precision:** There is room for improvement in the precision of bounding boxes, especially in crowded scenes.
+TBA
 
 ## Future Work
 
 To improve the model’s performance, we recommend the following:
 
-- **Data Augmentation:** Apply data augmentation techniques such as random scaling, cropping, and rotation to improve model robustness.
-- **Fine-Tuning:** Fine-tune the model on a smaller set of images for better convergence.
-- **Improved Evaluation Metrics:** Use additional metrics such as F1-score and Intersection over Intersection (IOI).
+TBA
 
 ## Additional Resources
 
@@ -85,9 +81,9 @@ The following resources are available for further exploration:
 
 - **Analysis Report:** You can access the detailed analysis report of the project at the following link: [Analysis Report on Google Drive](https://drive.google.com/drive/folders/1DX3BQFpL6CaSEwz1uNX6BINg4WKnc7Ql?usp=sharing).
 - **Data Analysis Container:** A pre-configured container for data analysis is available for download here: [Data Analysis Container on Google Drive](https://drive.google.com/file/d/1lac_4T1H480A2VuVBtLt2cSXsIotOFHp/view?usp=sharing).
-- **Pre-trained Model:** The pre-trained model used in this project is available for download here: [Pre-trained Model on Google Drive](https://drive.google.com/file/d/1NZR54DFGz2_NOhlrtmQqDGzYpYBzVvi1/view?usp=sharing).
+- **Trained Model:** The Trained model of this project is available for download here: [Pre-trained Model on Google Drive](https://drive.google.com/file/d/1NZR54DFGz2_NOhlrtmQqDGzYpYBzVvi1/view?usp=sharing).
 
 ## Conclusion
 
-This project demonstrates the effectiveness of Faster R-CNN for object detection on the BDD100K dataset. The model achieved satisfactory results but has room for improvement. The findings highlight areas for further research and development, including addressing class imbalance and improving detection accuracy.
+This project uses Faster R-CNN with Unet and low light enhancement layers with hybrid loss for object detection on the BDD100K dataset. 
 
