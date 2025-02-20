@@ -12,16 +12,19 @@ from torch.utils.tensorboard import SummaryWriter
 HYPERPARAMS = {
     "batch_size": 16,
     "learning_rate": 0.0001,
-    "epochs": 15,
-    "patience": 5,  
+    "epochs": 25,
+    "patience": 5,
     "checkpoint_path": "checkpoints/faster_rcnn_best.pth",
     "tensorboard_log_dir": "logs",
-    "use_regularization": True, 
-    "weight_decay": 5e-5, 
-    "iou_thresholds": [0.5, 0.75, 0.95],  
+    "use_regularization": False,
+    "weight_decay": 5e-5,
+    "iou_thresholds": [0.5, 0.75, 0.95],
     "train_mode": "quick",  # "quick" -> Few images, "full" -> Complete dataset
-    "max_train_samples": 10, 
-    "max_val_samples": 10,  
+    "max_train_samples": 10,
+    "max_val_samples": 10,
+    # Scheduler parameters:
+    "step_size": 7,    # number of epochs between LR decay
+    "lr_gamma": 0.1,   # factor by which LR is decayed
 }
 
 # ================== DATASET PATHS ==================
@@ -43,6 +46,9 @@ optimizer = optim.Adam(
     lr=HYPERPARAMS["learning_rate"],
     weight_decay=HYPERPARAMS["weight_decay"] if HYPERPARAMS["use_regularization"] else 0.0
 )
+
+# Initialize the StepLR scheduler.
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=HYPERPARAMS["step_size"], gamma=HYPERPARAMS["lr_gamma"])
 
 criterion = HybridLoss()
 writer = SummaryWriter(HYPERPARAMS["tensorboard_log_dir"])
@@ -167,7 +173,6 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     print(f"Epoch {epoch+1}: Validation Loss = {avg_val_loss:.4f}")
 
     # Compute & Print Evaluation Metrics using per-image dictionaries.
-    # Flatten the lists (if necessary) and then compute metrics.
     metrics = compute_evaluation_metrics(all_per_image_preds, all_per_image_targets, iou_thresholds=HYPERPARAMS["iou_thresholds"])
     for iou, metric_values in metrics.items():
         print(f"IoU {iou}: mAP={metric_values['mAP']:.3f}, AR={metric_values['AR']:.3f}")
@@ -179,6 +184,9 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
         patience_counter = 0
     else:
         patience_counter += 1
+
+    # Step the scheduler at the end of the epoch.
+    scheduler.step()
 
     if patience_counter >= HYPERPARAMS["patience"]:
         break
