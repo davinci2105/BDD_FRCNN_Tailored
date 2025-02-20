@@ -13,7 +13,7 @@ HYPERPARAMS = {
     "batch_size": 16,
     "learning_rate": 0.0001,
     "epochs": 15,
-    "patience": 3,  
+    "patience": 5,  
     "checkpoint_path": "checkpoints/faster_rcnn_best.pth",
     "tensorboard_log_dir": "logs",
     "use_regularization": True, 
