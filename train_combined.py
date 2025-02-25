@@ -8,39 +8,26 @@ from utils import save_checkpoint, load_checkpoint, plot_loss_curve, log_tensorb
 import os
 from torch.utils.tensorboard import SummaryWriter
 
-# Main Training Script
-# Description:
-#   This script sets up and trains an object detection model using a custom training loop.
-#   It configures hyperparameters, data loaders, model, optimizer, scheduler, and loss criterion.
-#   During training, it computes the training loss, validation loss, and evaluation metrics.
-#   The script supports checkpointing, early stopping, and TensorBoard logging.
-#
-# Variables:
-#   HYPERPARAMS         - Dictionary containing training hyperparameters and configuration settings.
-#   TRAIN_LABELS        - Path to the training labels JSON file.
-#   TRAIN_IMAGES        - Path to the training images directory.
-#   VAL_LABELS          - Path to the validation labels JSON file.
-#   VAL_IMAGES          - Path to the validation images directory.
-#   SELECTED_CLASSES    - List of selected classes for detection.
-#   CLASS_TO_IDX        - Dictionary mapping class names to integer indices.
-
+# ================== HYPERPARAMETERS ==================
 HYPERPARAMS = {
     "batch_size": 16,
     "learning_rate": 0.0001,
     "epochs": 25,
     "patience": 5,
-    "checkpoint_dir": "checkpoints",  # Directory to store checkpoint files
+    "checkpoint_dir": "checkpoints",  # Changed from checkpoint_path to checkpoint_dir
     "tensorboard_log_dir": "logs",
     "use_regularization": False,
     "weight_decay": 5e-5,
     "iou_thresholds": [0.5, 0.75, 0.95],
-    "train_mode": "quick",  # "quick" for a few images, "full" for the complete dataset
+    "train_mode": "full",  # "quick" -> Few images, "full" -> Complete dataset
     "max_train_samples": 10,
     "max_val_samples": 10,
-    "step_size": 7,    # Number of epochs between LR decay
-    "lr_gamma": 0.1,   # Factor for LR decay
+    # Scheduler parameters:
+    "step_size": 5,    # number of epochs between LR decay
+    "lr_gamma": 0.1,   # factor by which LR is decayed
 }
 
+# ================== DATASET PATHS ==================
 TRAIN_LABELS = "bdd_dataset/labels/bdd100k_labels_images_train.json"
 TRAIN_IMAGES = "bdd_dataset/100k/train"
 VAL_LABELS = "bdd_dataset/labels/bdd100k_labels_images_val.json"
@@ -50,7 +37,7 @@ SELECTED_CLASSES = ['car', 'truck', 'bus', 'motor', 'bike', 'train',
                     'traffic light', 'traffic sign', 'rider', 'person']
 CLASS_TO_IDX = {cls: idx for idx, cls in enumerate(SELECTED_CLASSES)}
 
-# Device setup, model initialization, optimizer and scheduler configuration
+# ================== SETUP MODEL & OPTIMIZER ==================
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = get_model().to(device)
 
@@ -60,16 +47,17 @@ optimizer = optim.Adam(
     weight_decay=HYPERPARAMS["weight_decay"] if HYPERPARAMS["use_regularization"] else 0.0
 )
 
+# Initialize the StepLR scheduler.
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=HYPERPARAMS["step_size"], gamma=HYPERPARAMS["lr_gamma"])
 
 criterion = HybridLoss()
 writer = SummaryWriter(HYPERPARAMS["tensorboard_log_dir"])
 
-# Load latest checkpoint if available and resume training
+# Load checkpoint if exists (latest checkpoint in the directory)
 best_val_loss, start_epoch = load_checkpoint(model, optimizer, HYPERPARAMS["checkpoint_dir"])
 print(f"📌 Resuming training from epoch {start_epoch}...")
 
-# Setup data loaders based on training mode
+# ================== DATALOADERS ==================
 if HYPERPARAMS["train_mode"] == "quick":
     train_loader = get_dataloader(
         TRAIN_LABELS, TRAIN_IMAGES, 
@@ -93,7 +81,11 @@ else:
 train_losses, val_losses = [], []
 patience_counter = 0
 
-# Training and validation loop
+# For accumulating per-image predictions (for metrics) during validation.
+all_per_image_preds = []
+all_per_image_targets = []
+
+# ================== TRAINING LOOP ==================
 for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     model.train()
     running_loss = 0.0
@@ -102,18 +94,18 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     print(f"🔹 Training Mode: {HYPERPARAMS['train_mode']}")
 
     for batch_idx, (images, targets) in enumerate(tqdm.tqdm(train_loader, desc=f"Epoch {epoch+1}/{HYPERPARAMS['epochs']} Training")):
-        images = torch.stack(images).to(device).float() / 255.0  # Normalize images to [0,1]
+        images = torch.stack(images).to(device).float() / 255.0  # Normalize (model.forward expects [0,255])
         targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
 
         optimizer.zero_grad()
         predictions_list = model(images)
 
-        # Process predictions and targets for loss computation and metric evaluation
+        # Updated visualization call with score threshold filtering.
         concat_preds, per_image_preds, per_image_targets = visualize_predictions(
             predictions_list, targets, device, CLASS_TO_IDX, score_threshold=0.05)
         pred_logits, pred_boxes, target_labels, target_boxes = concat_preds
 
-        # Align tensor lengths if necessary
+        # Optionally, clip tensors to the same length (if required by your loss function).
         min_size = min(pred_logits.shape[0], target_labels.shape[0], pred_boxes.shape[0], target_boxes.shape[0])
         if min_size > 0:
             pred_logits = pred_logits[:min_size]
@@ -121,6 +113,7 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
             pred_boxes = pred_boxes[:min_size]
             target_boxes = target_boxes[:min_size]
 
+            # Compute loss
             loss = criterion(pred_logits, target_labels, pred_boxes, target_boxes)
             
             if not loss.requires_grad:
@@ -136,10 +129,11 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     print(f"Epoch {epoch+1}: Train Loss = {avg_train_loss:.4f}")
     log_tensorboard(writer, epoch, avg_train_loss, mode="train")
 
-    # Validation phase
+    # ================== VALIDATION ==================
     model.eval()
     val_loss = 0.0
     val_samples_count = 0
+    # Reset per-image lists for current validation epoch.
     all_per_image_preds = []
     all_per_image_targets = []
 
@@ -157,6 +151,7 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
             if pred_boxes.shape[0] == 0:
                 print(f" No predictions for batch {i}")
     
+            # Accumulate per-image predictions for metric computation.
             all_per_image_preds.extend(per_image_preds)
             all_per_image_targets.extend(per_image_targets)
     
@@ -177,19 +172,22 @@ for epoch in range(start_epoch, HYPERPARAMS["epochs"]):
     val_losses.append(avg_val_loss)
     print(f"Epoch {epoch+1}: Validation Loss = {avg_val_loss:.4f}")
 
-    # Compute and display evaluation metrics based on validation predictions
+    # Compute & Print Evaluation Metrics using per-image dictionaries.
     metrics = compute_evaluation_metrics(all_per_image_preds, all_per_image_targets, iou_thresholds=HYPERPARAMS["iou_thresholds"])
     for iou, metric_values in metrics.items():
         print(f"IoU {iou}: mAP={metric_values['mAP']:.3f}, AR={metric_values['AR']:.3f}")
 
-    # Save checkpoint and check for early stopping criteria
+    # ================== CHECKPOINT & EARLY STOPPING ==================
+    # Save checkpoint at every epoch using the new checkpoint logic.
     save_checkpoint(model, optimizer, avg_val_loss, epoch, HYPERPARAMS["checkpoint_dir"])
+    # For early stopping, update patience based on validation loss improvement.
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
         patience_counter = 0
     else:
         patience_counter += 1
 
+    # Step the scheduler at the end of the epoch.
     scheduler.step()
 
     if patience_counter >= HYPERPARAMS["patience"]:

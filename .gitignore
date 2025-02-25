@@ -19,6 +19,7 @@ analysis_report/
 detectron2/
 *.tar
 analysis-container.tar
+trained_models
 # Logs and checkpoints
 logs/
 *.log
