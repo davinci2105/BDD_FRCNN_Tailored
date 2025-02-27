@@ -368,7 +368,7 @@ def dataset_completeness(tr_data, v_data):
     }])
     df.to_csv('analysis_report/dataset_completeness.csv', index=False)
 
-# 5. Statistical Tools (Outlier Detection Example)
+# 5. Statistical Tools (Outlier Detection)
 def detect_outliers_iqr(df):
     q1 = df['bbox_area'].quantile(0.25)
     q3 = df['bbox_area'].quantile(0.75)
