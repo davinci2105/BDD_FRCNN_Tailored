@@ -3,23 +3,18 @@ import torch.optim as optim
 import tqdm
 import os
 from torch.utils.tensorboard import SummaryWriter
-
-# Optional imports for distributed training.
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DistributedSampler, DataLoader
-
 from model import get_model
 from dataloader import get_dataloader
 from losses import HybridLoss
 from utils import save_checkpoint, load_checkpoint, plot_loss_curve, log_tensorboard, visualize_predictions, compute_evaluation_metrics
 
 # ================== HYPERPARAMETERS ==================
-# Set "distributed" to True when using multi-GPU DDP training.
 HYPERPARAMS = {
-    "distributed": True,           # Toggle distributed training here.
-    "batch_size": 64,               # Base batch size (will be adjusted per GPU if distributed)
-    "learning_rate": 0.0002,
+    "distributed": True,          
+    "batch_size": 64,               
     "epochs": 25,
     "patience": 5,
     "checkpoint_dir": "checkpoints",
@@ -33,13 +28,13 @@ HYPERPARAMS = {
     "step_size": 5,
     "lr_gamma": 0.1,
     "num_workers": 8,
-    "optimizer": "adamw"            # Choose "adamw" or "adam"
+    "optimizer": "adamw"           
 }
 
-# ================== CUSTOM COLLATE FUNCTION (for DDP) ==================
+# ================== CUSTOM COLLATE FUNCTION ==================
 def custom_collate_fn(batch):
-    images, targets = zip(*batch)  # Unzip batch
-    return list(images), list(targets)  # Return lists instead of stacked tensors
+    images, targets = zip(*batch)  
+    return list(images), list(targets)  
 
 # ================== DATASET PATHS ==================
 TRAIN_LABELS = "bdd_dataset/labels/bdd100k_labels_images_train.json"
@@ -97,7 +92,7 @@ print(f"📌 Resuming training from epoch {start_epoch}...")
 
 # ================== DATALOADERS SETUP ==================
 if HYPERPARAMS["distributed"]:
-    # Use quick mode if specified.
+   
     if HYPERPARAMS["train_mode"] == "quick":
         train_loader_tmp = get_dataloader(
             TRAIN_LABELS, TRAIN_IMAGES,
