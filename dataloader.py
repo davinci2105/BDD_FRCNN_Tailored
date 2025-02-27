@@ -8,7 +8,6 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from torchvision import transforms
 from PIL import Image
-from model import UNet, LowLightEnhancement
 
 # Classes Chosen
 SELECTED_CLASSES = ['car', 'truck', 'bus', 'motor', 'bike', 'train',
@@ -16,9 +15,8 @@ SELECTED_CLASSES = ['car', 'truck', 'bus', 'motor', 'bike', 'train',
 CLASS_TO_IDX = {cls: idx+1 for idx, cls in enumerate(SELECTED_CLASSES)}  # Background = 0
 
 class BDDDataset(Dataset):
-    def __init__(self, label_file, image_dir, transform=None, preprocess=True):
+    def __init__(self, label_file, image_dir, transform=None):
         self.image_dir = image_dir
-        self.preprocess = preprocess
         self.transform = transform
 
         # Load annotations
@@ -31,11 +29,6 @@ class BDDDataset(Dataset):
             valid_objs = [obj for obj in ann['labels'] if obj['category'] in SELECTED_CLASSES]
             if valid_objs:
                 self.filtered_annotations.append((ann['name'], valid_objs))
-
-        # Initialize preprocessing models if required
-        if self.preprocess:
-            self.unet = UNet().eval()
-            self.low_light_enhancer = LowLightEnhancement().eval()
 
     def __len__(self):
         return len(self.filtered_annotations)
@@ -65,18 +58,6 @@ class BDDDataset(Dataset):
         bboxes = np.array(bboxes, dtype=np.float32)
         labels = np.array(labels, dtype=np.int64)
 
-        # Convert image to tensor for preprocessing
-        image_tensor = transforms.ToTensor()(image).unsqueeze(0)
-
-        if self.preprocess:
-            with torch.no_grad():
-                image_tensor = self.unet(image_tensor)
-                image_tensor = self.low_light_enhancer(image_tensor)
-
-        # Convert back to numpy image
-        image = image_tensor.squeeze(0).permute(1, 2, 0).numpy()
-        image = (image * 255).astype(np.uint8)
-
         # Apply augmentations
         if self.transform:
             transformed = self.transform(image=image, bboxes=bboxes, labels=labels)
@@ -103,11 +84,14 @@ val_transform = A.Compose([
     ToTensorV2()
 ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['labels'], min_visibility=0.2))
 
+
 def get_dataloader(label_file, image_dir, batch_size=8, shuffle=True, is_train=True, max_samples=None):
     transform = train_transform if is_train else val_transform
     dataset = BDDDataset(label_file, image_dir, transform=transform)
+    
     # Apply quick mode if max_samples is provided
     if max_samples is not None:
         indices = list(range(min(len(dataset), max_samples)))
         dataset = Subset(dataset, indices)
+    
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=lambda x: tuple(zip(*x)))
